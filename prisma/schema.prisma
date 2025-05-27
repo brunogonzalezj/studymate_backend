@@ -1,0 +1,213 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Rol {
+  ESTUDIANTE
+  MAESTRO
+  ADMIN
+}
+
+model Usuario {
+  id         Int      @id @default(autoincrement())
+  nombre     String
+  correo     String   @unique
+  contrasena String
+  rol        Rol      @default(ESTUDIANTE)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Relaciones polimórficas
+  estudiante Estudiante?
+  maestro    Maestro?
+
+  @@map("usuarios")
+}
+
+model Estudiante {
+  id                    Int     @id @default(autoincrement())
+  nivelAcademico        String?
+  disponibilidadHoraria String?
+
+  // Relación con Usuario
+  usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  usuarioId Int     @unique
+
+  // Relaciones con otras entidades
+  documentos     Documento[]
+  planesEstudio  PlanEstudio[]
+  avances        Avance[]
+  notificaciones Notificacion[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("estudiantes")
+}
+
+model Maestro {
+  id                Int      @id @default(autoincrement())
+  especialidad      String?
+  materiasAsignadas String[]
+
+  // Relación con Usuario
+  usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  usuarioId Int     @unique
+
+  // Relaciones con otras entidades
+  documentos Documento[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("maestros")
+}
+
+enum FormatoDocumento {
+  PDF
+  DOCX
+  TXT
+  IMG
+  OTROS
+}
+
+model Documento {
+  id          Int              @id @default(autoincrement())
+  titulo      String
+  formato     FormatoDocumento @default(PDF)
+  contenido   String           @db.Text
+  fechaSubida DateTime         @default(now())
+
+  // Relaciones con Estudiante y Maestro
+  estudiante   Estudiante? @relation(fields: [estudianteId], references: [id])
+  estudianteId Int?
+  maestro      Maestro?    @relation(fields: [maestroId], references: [id])
+  maestroId    Int?
+
+  // Relaciones con elementos generados
+  resumenes  Resumen[]
+  preguntas  Pregunta[]
+  flashcards Flashcard[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("documentos")
+}
+
+model Resumen {
+  id            Int      @id @default(autoincrement())
+  contenido     String   @db.Text
+  fechaCreacion DateTime @default(now())
+  calidad       Float?   @default(0)
+
+  // Relación con Documento
+  documento   Documento @relation(fields: [documentoId], references: [id], onDelete: Cascade)
+  documentoId Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("resumenes")
+}
+
+enum TipoPregunta {
+  OPCION_MULTIPLE
+  VERDADERO_FALSO
+  RESPUESTA_CORTA
+  DESARROLLO
+}
+
+model Pregunta {
+  id                Int          @id @default(autoincrement())
+  tipo              TipoPregunta @default(OPCION_MULTIPLE)
+  enunciado         String       @db.Text
+  opciones          String[]
+  respuestaCorrecta String
+
+  // Relación con Documento
+  documento   Documento @relation(fields: [documentoId], references: [id], onDelete: Cascade)
+  documentoId Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("preguntas")
+}
+
+model Flashcard {
+  id        Int    @id @default(autoincrement())
+  pregunta  String @db.Text
+  respuesta String @db.Text
+
+  // Relación con Documento
+  documento   Documento @relation(fields: [documentoId], references: [id], onDelete: Cascade)
+  documentoId Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("flashcards")
+}
+
+model PlanEstudio {
+  id          Int      @id @default(autoincrement())
+  titulo      String
+  fechaInicio DateTime
+  fechaFin    DateTime
+  tecnicas    String?
+  descripcion String?  @db.Text
+
+  // Relación con Estudiante
+  estudiante   Estudiante @relation(fields: [estudianteId], references: [id], onDelete: Cascade)
+  estudianteId Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("planes_estudio")
+}
+
+model Avance {
+  id          Int     @id @default(autoincrement())
+  materia     String
+  porcentaje  Float   @default(0)
+  descripcion String? @db.Text
+
+  // Relación con Estudiante
+  estudiante   Estudiante @relation(fields: [estudianteId], references: [id], onDelete: Cascade)
+  estudianteId Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("avances")
+}
+
+model Notificacion {
+  id         Int      @id @default(autoincrement())
+  mensaje    String   @db.Text
+  fechaEnvio DateTime @default(now())
+  leida      Boolean  @default(false)
+
+  // Relación con Estudiante
+  estudiante   Estudiante @relation(fields: [estudianteId], references: [id], onDelete: Cascade)
+  estudianteId Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("notificaciones")
+}
