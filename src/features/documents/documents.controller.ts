@@ -28,13 +28,13 @@ export const subirDocumentoPDF = async (req: Request, res: Response): Promise<vo
         const materia = req.body.materia || 'General';
         const tema = req.body.tema || 'Sin tema';
         const estudianteId = parseInt(req.body.estudianteId);
-       const documento = await crearDocumento(
+        const documento = await crearDocumento(
             titulo,
             contenido,
             materia,
             tema,
             estudianteId
-            );
+        );
         res.status(201).json(documento);
     } catch (err: any) {
         console.error(err);
@@ -150,7 +150,6 @@ export const obtenerTodosLosDocumentos = async (req: Request, res: Response): Pr
     }
 };
 
-// 🔹 Obtener un documento por ID
 export const obtenerDocumentoPorId = async (req: Request, res: Response): Promise<void> => {
     try {
         const id = parseInt(req.params.id);
@@ -177,74 +176,98 @@ export const obtenerDocumentoPorId = async (req: Request, res: Response): Promis
 };
 // 🔹 Obtener documentos de un estudiante específico
 export const obtenerMisDocumentos = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const estudianteId = parseInt(req.query.estudianteId as string);
+    try {
+        const estudianteId = parseInt(req.query.estudianteId as string);
 
-    if (isNaN(estudianteId)) {
-      res.status(400).json({ error: 'Parámetro estudianteId inválido o ausente' });
-      return;
+        if (isNaN(estudianteId)) {
+            res.status(400).json({error: 'Parámetro estudianteId inválido o ausente'});
+            return;
+        }
+
+        const documentos = await prisma.documento.findMany({
+            where: {estudianteId},
+            orderBy: {fechaSubida: 'desc'},
+        });
+
+        res.json(documentos);
+    } catch (err: any) {
+        console.error(err);
+        res.status(500).json({error: 'Error al obtener documentos del estudiante', detalle: err.message});
     }
-
-    const documentos = await prisma.documento.findMany({
-      where: { estudianteId },
-      orderBy: { fechaSubida: 'desc' },
-    });
-
-    res.json(documentos);
-  } catch (err: any) {
-    console.error(err);
-    res.status(500).json({ error: 'Error al obtener documentos del estudiante', detalle: err.message });
-  }
 };
 
 // 🔹 Obtener documentos por estudianteId
 export const obtenerDocumentosPorEstudiante = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const estudianteId = parseInt(req.params.estudianteId);
+    try {
+        const estudianteId = parseInt(req.params.estudianteId);
 
-    if (isNaN(estudianteId)) {
-      res.status(400).json({ error: 'ID de estudiante inválido' });
-      return;
+        if (isNaN(estudianteId)) {
+            res.status(400).json({error: 'ID de estudiante inválido'});
+            return;
+        }
+
+        const documentos = await prisma.documento.findMany({
+            where: {estudianteId},
+            orderBy: {fechaSubida: 'desc'}
+        });
+
+        res.json(documentos);
+    } catch (err: any) {
+        console.error(err);
+        res.status(500).json({error: 'Error al obtener documentos', detalle: err.message});
     }
-
-    const documentos = await prisma.documento.findMany({
-      where: { estudianteId },
-      orderBy: { fechaSubida: 'desc' }
-    });
-
-    res.json(documentos);
-  } catch (err: any) {
-    console.error(err);
-    res.status(500).json({ error: 'Error al obtener documentos', detalle: err.message });
-  }
 };
 // 🔹 Obtener flashcards del estudiante
-export const obtenerFlashcardsPorEstudiante = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const estudianteId = parseInt(req.params.estudianteId);
+export const obtenerFlashcardsPorDocumento = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const documentoId = parseInt(req.params.documentoId);
 
-    if (isNaN(estudianteId)) {
-      res.status(400).json({ error: 'ID de estudiante inválido' });
-      return;
+        if (isNaN(documentoId)) {
+            res.status(400).json({error: 'ID de estudiante inválido'});
+            return;
+        }
+
+        const flashcards = await prisma.flashcard.findMany({
+            where: {
+                documentoId
+            },
+        });
+
+        res.json(flashcards);
+    } catch (err: any) {
+        console.error(err);
+        res.status(500).json({error: 'Error al obtener flashcards', detalle: err.message});
     }
-
-    const flashcards = await prisma.flashcard.findMany({
-      where: {
-        documento: {
-          estudianteId: estudianteId,
-        },
-      },
-      include: {
-        documento: {
-          select: { titulo: true },
-        },
-      },
-      orderBy: { createdAt: 'desc' }
-    });
-
-    res.json(flashcards);
-  } catch (err: any) {
-    console.error(err);
-    res.status(500).json({ error: 'Error al obtener flashcards', detalle: err.message });
-  }
 };
+
+export const obtenerResumenPorDocumento = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const documentoId = parseInt(req.params.documentoId);
+
+        if (isNaN(documentoId)) {
+            res.status(400).json({error: 'ID de documento inválido'});
+            return;
+        }
+
+        const resumen = await prisma.resumen.findFirst({
+            where: {
+                documentoId: documentoId
+            }
+            , include: {
+                documento: {
+                    select: {titulo: true, materia: true, tema: true}
+                }
+            }
+        });
+
+        if (!resumen) {
+            res.status(404).json({error: 'Resumen no encontrado para este documento'});
+            return;
+        }
+
+        res.json(resumen);
+    } catch (err: any) {
+        console.error(err);
+        res.status(500).json({error: 'Error al obtener resumen', detalle: err.message});
+    }
+}
