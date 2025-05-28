@@ -8,5 +8,6 @@ export const registerUser = async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error(error);
     res.status(400).json({ error: 'No se pudo crear el usuario', detalle: error.message });
+    res.status(500).json({ error: 'An error occurred.' });
   }
 };
