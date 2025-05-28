@@ -88,6 +88,7 @@ model Documento {
   titulo      String
   formato     FormatoDocumento @default(PDF)
   contenido   String           @db.Text
+  resumen     String?           @db.Text
   fechaSubida DateTime         @default(now())
 
   // Relaciones con Estudiante y Maestro
