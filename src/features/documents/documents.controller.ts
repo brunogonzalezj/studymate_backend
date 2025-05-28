@@ -94,3 +94,15 @@ export const obtenerDocumentoPorId = async (req: Request, res: Response): Promis
     res.status(500).json({ error: 'Error al obtener documento', detalle: err.message });
   }
 };
+export const obtenerTodosLosDocumentos = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const documentos = await prisma.documento.findMany({
+      orderBy: { fechaSubida: 'desc' }
+    });
+
+    res.json(documentos);
+  } catch (err: any) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al obtener documentos', detalle: err.message });
+  }
+};
