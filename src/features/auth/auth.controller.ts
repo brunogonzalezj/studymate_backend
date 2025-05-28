@@ -9,7 +9,10 @@ export const login = async (req: Request, res: Response): Promise<void> => {
   const { correo, contrasena } = req.body;
 
   try {
-    const usuario = await prisma.usuario.findUnique({ where: { correo } });
+   const usuario = await prisma.usuario.findUnique({
+  where: { correo },
+  include: { estudiante: true },
+});
 
     if (!usuario) {
       res.status(404).json({ error: 'Usuario no encontrado' });
