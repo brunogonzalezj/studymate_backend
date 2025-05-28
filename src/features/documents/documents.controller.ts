@@ -34,12 +34,13 @@ export const subirDocumentoPDF = async (req: Request, res: Response): Promise<vo
   }
 };
 
-// 🔹 Generación de resumen con OpenAI
+// 🔹 Generación de resumen y flashcards con OpenAI
 export const generarResumen = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id } = req.body;
-    if (!id) {
-      res.status(400).json({ error: 'Falta el ID del documento' });
+    const { id, tipo } = req.body;
+
+    if (!id || !tipo) {
+      res.status(400).json({ error: 'Faltan campos obligatorios: id y tipo' });
       return;
     }
 
@@ -49,27 +50,97 @@ export const generarResumen = async (req: Request, res: Response): Promise<void>
       return;
     }
 
+    let prompt = '';
+    let mode = tipo.toUpperCase();
+
+    if (mode === 'EXTENDIDO') {
+      prompt = 'Resumí el siguiente texto en español de forma detallada, incluyendo todos los conceptos importantes.';
+    } else if (mode === 'CORTO') {
+      prompt = 'Resumí el siguiente texto en español de forma breve, incluyendo solo ideas clave.';
+    } else if (mode === 'FLASHCARDS') {
+      prompt = `
+Genera flashcards en formato JSON con al menos 5 pares pregunta/respuesta basados en el siguiente texto.
+
+Formato:
+{
+  "flashcards": [
+    {
+      "question": "¿Pregunta 1?",
+      "answer": "Respuesta 1"
+    },
+    ...
+  ]
+}
+
+Texto:
+${documento.contenido}
+`;
+    } else {
+      res.status(400).json({ error: 'Tipo inválido. Usa: EXTENDIDO, CORTO o FLASHCARDS.' });
+      return;
+    }
+
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
-        { role: 'system', content: 'Resumí el siguiente texto en español:' },
+        { role: 'system', content: prompt },
         { role: 'user', content: documento.contenido },
       ],
     });
 
-    const resumen = completion.choices[0]?.message?.content || '';
+    const result = completion.choices[0]?.message?.content || '';
 
-    const actualizado = await prisma.documento.update({
-      where: { id },
-      data: { resumen },
-    });
+    // --- Modo resumen largo/corto
+    if (mode === 'EXTENDIDO' || mode === 'CORTO') {
+      await prisma.documento.update({
+        where: { id },
+        data: { resumen: result },
+      });
 
-    res.json({ mensaje: 'Resumen generado', resumen });
+      res.json({ mensaje: 'Resumen generado', resumen: result });
+    }
+
+    // --- Modo flashcards
+    if (mode === 'FLASHCARDS') {
+        const clean = result.replace(/```json|```/g, '').trim();
+        const parsed = JSON.parse(clean);
+        const cards = parsed.flashcards;
+
+      const creadas = await Promise.all(
+        cards.map((card: any) =>
+          prisma.flashcard.create({
+            data: {
+              pregunta: card.question,
+              respuesta: card.answer,
+              documentoId: id,
+            },
+          })
+        )
+      );
+
+      res.status(201).json({ mensaje: 'Flashcards generadas', total: creadas.length, flashcards: creadas });
+    }
   } catch (err: any) {
     console.error(err);
-    res.status(500).json({ error: 'Error al generar resumen', detalle: err.message });
+    res.status(500).json({ error: 'Error al procesar el contenido', detalle: err.message });
   }
 };
+
+// 🔹 Listado general de documentos
+export const obtenerTodosLosDocumentos = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const documentos = await prisma.documento.findMany({
+      orderBy: { fechaSubida: 'desc' }
+    });
+
+    res.json(documentos);
+  } catch (err: any) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al obtener documentos', detalle: err.message });
+  }
+};
+
+// 🔹 Obtener un documento por ID
 export const obtenerDocumentoPorId = async (req: Request, res: Response): Promise<void> => {
   try {
     const id = parseInt(req.params.id);
@@ -92,17 +163,5 @@ export const obtenerDocumentoPorId = async (req: Request, res: Response): Promis
   } catch (err: any) {
     console.error(err);
     res.status(500).json({ error: 'Error al obtener documento', detalle: err.message });
-  }
-};
-export const obtenerTodosLosDocumentos = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const documentos = await prisma.documento.findMany({
-      orderBy: { fechaSubida: 'desc' }
-    });
-
-    res.json(documentos);
-  } catch (err: any) {
-    console.error(err);
-    res.status(500).json({ error: 'Error al obtener documentos', detalle: err.message });
   }
 };
