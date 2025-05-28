@@ -27,8 +27,14 @@ export const subirDocumentoPDF = async (req: Request, res: Response): Promise<vo
         const contenido = parsed.text;
         const materia = req.body.materia || 'General';
         const tema = req.body.tema || 'Sin tema';
-
-        const documento = await crearDocumento(titulo, contenido, materia, tema);
+        const estudianteId = parseInt(req.body.estudianteId);
+       const documento = await crearDocumento(
+            titulo,
+            contenido,
+            materia,
+            tema,
+            estudianteId
+            );
         res.status(201).json(documento);
     } catch (err: any) {
         console.error(err);
@@ -168,4 +174,77 @@ export const obtenerDocumentoPorId = async (req: Request, res: Response): Promis
         console.error(err);
         res.status(500).json({error: 'Error al obtener documento', detalle: err.message});
     }
+};
+// 🔹 Obtener documentos de un estudiante específico
+export const obtenerMisDocumentos = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const estudianteId = parseInt(req.query.estudianteId as string);
+
+    if (isNaN(estudianteId)) {
+      res.status(400).json({ error: 'Parámetro estudianteId inválido o ausente' });
+      return;
+    }
+
+    const documentos = await prisma.documento.findMany({
+      where: { estudianteId },
+      orderBy: { fechaSubida: 'desc' },
+    });
+
+    res.json(documentos);
+  } catch (err: any) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al obtener documentos del estudiante', detalle: err.message });
+  }
+};
+
+// 🔹 Obtener documentos por estudianteId
+export const obtenerDocumentosPorEstudiante = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const estudianteId = parseInt(req.params.estudianteId);
+
+    if (isNaN(estudianteId)) {
+      res.status(400).json({ error: 'ID de estudiante inválido' });
+      return;
+    }
+
+    const documentos = await prisma.documento.findMany({
+      where: { estudianteId },
+      orderBy: { fechaSubida: 'desc' }
+    });
+
+    res.json(documentos);
+  } catch (err: any) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al obtener documentos', detalle: err.message });
+  }
+};
+// 🔹 Obtener flashcards del estudiante
+export const obtenerFlashcardsPorEstudiante = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const estudianteId = parseInt(req.params.estudianteId);
+
+    if (isNaN(estudianteId)) {
+      res.status(400).json({ error: 'ID de estudiante inválido' });
+      return;
+    }
+
+    const flashcards = await prisma.flashcard.findMany({
+      where: {
+        documento: {
+          estudianteId: estudianteId,
+        },
+      },
+      include: {
+        documento: {
+          select: { titulo: true },
+        },
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    res.json(flashcards);
+  } catch (err: any) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al obtener flashcards', detalle: err.message });
+  }
 };
