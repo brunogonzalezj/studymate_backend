@@ -88,8 +88,10 @@ model Documento {
   titulo      String
   formato     FormatoDocumento @default(PDF)
   contenido   String           @db.Text
-  resumen     String?           @db.Text
+  resumen     String?          @db.Text
   fechaSubida DateTime         @default(now())
+  materia     String?
+  tema        String?
 
   // Relaciones con Estudiante y Maestro
   estudiante   Estudiante? @relation(fields: [estudianteId], references: [id])

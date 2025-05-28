@@ -23,10 +23,12 @@ export const subirDocumentoPDF = async (req: Request, res: Response): Promise<vo
         const buffer = fs.readFileSync(file.path);
         const parsed = await pdfParse(buffer);
 
-        const titulo = file.originalname.replace('.pdf', '');
+        const titulo = (req.body.titulo || file.originalname).replace('.pdf', '');
         const contenido = parsed.text;
+        const materia = req.body.materia || 'General';
+        const tema = req.body.tema || 'Sin tema';
 
-        const documento = await crearDocumento(titulo, contenido);
+        const documento = await crearDocumento(titulo, contenido, materia, tema);
         res.status(201).json(documento);
     } catch (err: any) {
         console.error(err);

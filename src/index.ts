@@ -1,11 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import userRoutes from './features/users/users.route';
-
-
 import authRoutes from './features/auth/auth.route';
 import documentsRoutes from './features/documents/documents.route';
-// import userRoutes from './features/users/users.route'; // más adelante
 
 const app = express();
 app.use(express.json());

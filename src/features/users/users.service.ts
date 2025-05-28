@@ -14,7 +14,7 @@ export const createUsuario = async (data: any) => {
       nombre,
       correo,
       contrasena: hashed,
-      rol,
+      rol: rol || 'ESTUDIANTE', // Por defecto, si no se especifica rol, será ESTUDIANTE
     },
   });
 
